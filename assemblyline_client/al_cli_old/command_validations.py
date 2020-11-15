@@ -6,7 +6,7 @@ Version:        0.0.1
 Last Updated:   07/17/2020
 """
 
-from al_cli_core import Main
+from assemblyline_client.al_cli_old.al_cli_core import Main
 import re
 # TODO: Fix documentation function
 # TODO: Error check help functions

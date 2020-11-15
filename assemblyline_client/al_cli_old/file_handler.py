@@ -1,5 +1,5 @@
 import configparser
-import al_var
+from assemblyline_client.al_cli_old import al_var
 
 
 def create_settings_file():

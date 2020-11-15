@@ -3,8 +3,8 @@ import getpass
 import logging
 import sys
 
-import file_handler
-import al_var
+from assemblyline_client.al_cli_old import file_handler
+from assemblyline_client.al_cli_old import al_var
 from os import path
 from assemblyline_client import get_client
 import requests

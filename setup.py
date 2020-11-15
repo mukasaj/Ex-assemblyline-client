@@ -45,6 +45,7 @@ setup(
         ],
     },
     install_requires=[
+        'pycdlib',
         'pycryptodome',
         'requests',
         'requests[security]',

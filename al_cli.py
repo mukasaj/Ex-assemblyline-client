@@ -1,5 +1,5 @@
 """
-Filename:       al_cli.py
+Filename:       al_cli_old.py
 Description:    This file is responsible for running the main loop of the program and calling all necessary functions
 Authors:        Liam Henley-Vachon & Joshua Mukasa
 Version:        0.2.0
@@ -7,14 +7,14 @@ Last Updated:   07/20/2020
 """
 import logging
 
-import al_var
-import command_validations
+from assemblyline_client.al_cli_old import al_var
+from assemblyline_client.al_cli_old import command_validations
 import atexit
-import help_functions
+from assemblyline_client.al_cli_old import help_functions
 from sys import argv
-import file_handler
+from assemblyline_client.al_cli_old import file_handler
 import argparse
-from al_cli_core import Main
+from assemblyline_client.al_cli_old.al_cli_core import Main
 import re
 
 print()
@@ -199,7 +199,7 @@ if len(argv) <= 1 or args.menu:
             command = ""
             # Get the users command
             while command == "":
-                command = input("(al_cli) $ ")
+                command = input("(al_cli_old) $ ")
             split_comm = command.split()
             if split_comm[0] == "help":
                 # If the user types help for a specific command
