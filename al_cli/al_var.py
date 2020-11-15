@@ -1,0 +1,8 @@
+CONFIG_FILE_PATH = "config.ini"
+DEBUG = False
+DEV = False
+CACHE_FILE = "core_cache.pk"
+KEY_PRIV = ['READ', 'WRITE', "READ_WRITE"]
+DEFAULT_TIMEOUT = 15
+DOWNLOADS = 'downloads/'
+MAX_FILE_SIZE = 100000000
