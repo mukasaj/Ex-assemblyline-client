@@ -172,7 +172,6 @@ if len(argv) <= 1 or args.menu:
     if minimal:
         print("Yes")
 
-
     # This function runs the start of the cli and is the main program loop
     def main_function():
 

@@ -22,22 +22,6 @@ Version:        0.4.0
 Last Updated:   07/30/2020
 """
 
-
-# TODO: testing, and fix bugs found
-# TODO: get results from a single inside a folder/zip
-# TODO: user docs
-
-# def print_json(dic):
-#     for key, value in dic.items():
-#         if isinstance(value, dic):
-#             print(key + ":")
-#             print_json(dic)
-#         if isinstance(value, list):
-#             print(key + ":")
-#         else:
-#             print("{0}: {1}".format(key, value))
-
-# creating config parser and reading the config file
 config = configparser.ConfigParser()
 
 # Checking if the config.ini file exists and creating one if it doesn't
@@ -114,16 +98,10 @@ class Main:
     def extend_priv(self):
         password = getpass.getpass(prompt='Password: ')
         try:
-            self.connection = get_client(
-                config["server"]["host"] if config.has_option("server", "host") else "",
-                auth=(
-                    config["user"]["username"] if config.has_option("user", "username") else "",
-                    password
-                )
-            )
+            self.connection = get_client(config["server"]["host"], auth=(config["user"]["username"], password))
         except Exception as e:
             print(e, file=sys.stderr)
-            return
+            sys.exit(1)
 
     def delkey(self, name, out=None, minimal=None):
         self.run(self.server.extend_priv)
