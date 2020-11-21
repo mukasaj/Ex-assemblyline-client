@@ -1,4 +1,4 @@
-from assemblyline_client.al_cli_old.services.iso_extractor import Iso
+from assemblyline_client.extension.services.iso_extractor import Iso
 
 
 class ServiceManager():

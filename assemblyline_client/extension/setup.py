@@ -15,7 +15,7 @@ elif 'BUILD_SOURCEBRANCH' in os.environ:
 
 # read the contents of the README file
 this_directory = os.path.abspath(os.path.dirname(__file__))
-with open(os.path.join(this_directory, 'README.md')) as f:
+with open(os.path.join(this_directory, '../../README.md')) as f:
     long_description = f.read()
 
 setup(

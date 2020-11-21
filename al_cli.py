@@ -7,14 +7,11 @@ Last Updated:   07/20/2020
 """
 import logging
 
-from assemblyline_client.al_cli_old import al_var
-from assemblyline_client.al_cli_old import command_validations
 import atexit
-from assemblyline_client.al_cli_old import help_functions
+from assemblyline_client.extension import help_functions, file_handler, command_validations, al_var
 from sys import argv
-from assemblyline_client.al_cli_old import file_handler
 import argparse
-from assemblyline_client.al_cli_old.al_cli_core import Main
+from assemblyline_client.extension.al_cli_core import Main
 import re
 
 print()
@@ -22,9 +19,6 @@ print()
 # Reading arguments from command line
 parser = argparse.ArgumentParser(description="Assemblyline client commands")
 # General flag
-parser.add_argument('--doc', action="store_true", help="get docs")
-parser.add_argument('--section', type=str, help="get docs for section")
-parser.add_argument('--function', type=str, help="get docs ofr function")
 parser.add_argument('--menu', action="store_true", help="Open menu")
 parser.add_argument('--service', type=str, help="List")
 parser.add_argument('--dev', action="store_true", help="enable dev mode")
@@ -91,10 +85,6 @@ clientCore = Main()
 # General
 if args.test:
     clientCore.test()
-if args.doc:
-    clientCore.get_documentation()
-if args.section:
-    clientCore.get_documentation(section=args.section, key=args.function if args.function else None)
 if args.check_cache:
     clientCore.check_cache()
 if args.clear_cache:

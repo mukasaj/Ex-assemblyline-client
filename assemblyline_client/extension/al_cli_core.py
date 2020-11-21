@@ -1,15 +1,18 @@
+import configparser
+import getpass
 import os
 import pickle
 import sys
 import time
 from os import path
-from assemblyline_client.al_cli_old.al_server_client import AlServerClient
 import json
-from assemblyline_client.al_cli_old import al_var
 import requests
 import logging
 
-from assemblyline_client.al_cli_old.services.service_manager import ServiceManager
+from assemblyline_client import get_client
+
+from assemblyline_client.extension import file_handler, al_var
+from assemblyline_client.extension.services.service_manager import ServiceManager
 
 """
 Filename:       al_cli_core.py
@@ -34,6 +37,27 @@ Last Updated:   07/30/2020
 #         else:
 #             print("{0}: {1}".format(key, value))
 
+# creating config parser and reading the config file
+config = configparser.ConfigParser()
+
+# Checking if the config.ini file exists and creating one if it doesn't
+if not path.exists(al_var.CONFIG_FILE_PATH):
+    file_handler.create_settings_file()
+config.read(al_var.CONFIG_FILE_PATH)
+
+# Adding a timeout to all requests made using the requests library
+old_send = requests.Session.send
+
+
+def new_send(*args, **kwargs):
+    if kwargs.get("timeout", None) is None:
+        kwargs["timeout"] = int(config["requests"]["timeout"]) if config.has_option("requests", "timeout") else None
+    return old_send(*args, **kwargs)
+
+
+requests.Session.send = new_send
+
+# TODO: look into combining with the run functions
 def output(json_content, minimal=False, out=None):
     if not json_content:
         return
@@ -61,11 +85,16 @@ def output(json_content, minimal=False, out=None):
 
 
 class Main:
-    server = None
+    connection = None
     cache = {}
 
     def __init__(self):
-        self.server = AlServerClient()
+        try:
+            self.connection = get_client(config["server"]["host"], apikey=(config["user"]["username"], config["user"]["apikey"]))
+        except Exception as e:
+            print(e, file=sys.stderr)
+            sys.exit(1)
+
         self.service = ServiceManager()
         if path.exists(al_var.CACHE_FILE):  # Loading cache file if it exists
             with open(al_var.CACHE_FILE, 'rb') as file:
@@ -75,49 +104,40 @@ class Main:
     def __exit__(self):
         if not self.cache:  # Return if dictionary is empty
             return
-
-
+        with open(al_var.CACHE_FILE, 'wb') as file:
+            pickle.dump(self.cache, file)
             file.close()
 
     def test(self):
-        # sha256 = "3ac4f5f42e2be505d538522422fc4cb88cb5396a855d11486ca0dcf349cba270"
-
-        # iso_path = 'ubuntu.iso'
-        # self.service.iso.extract(iso_path)
-        # #print(self.service.iso.get_paths())
-        # paths = self.service.iso.get_paths()
-        # error_occurred = False
-        # sid_list = []
-        # for filepath in paths:
-        #     time.sleep(60)
-        #     if os.path.getsize(filepath) < 100000000:
-        #         data = self.run(self.server.connection.submit, filepath)
-        #         if data:
-        #             print(os.path.basename(filepath)+" SID: "+data['sid'])
-        #             sid_list.append(data['sid'])
-        #         else:
-        #             error_occurred = True
-        #             logging.error(f"'{os.path.basename(filepath)}' failed to submit")
-        #     else:
-        #         logging.warning(f"'{os.path.basename(filepath)}' was skipped, filesize over 100mb")
-        #
-        # if error_occurred:
-        #     logging.error("some files failed to submit ")
         pass
+
+    def extend_priv(self):
+        password = getpass.getpass(prompt='Password: ')
+        try:
+            self.connection = get_client(
+                config["server"]["host"] if config.has_option("server", "host") else "",
+                auth=(
+                    config["user"]["username"] if config.has_option("user", "username") else "",
+                    password
+                )
+            )
+        except Exception as e:
+            print(e, file=sys.stderr)
+            return
 
     def delkey(self, name, out=None, minimal=None):
         self.run(self.server.extend_priv)
-        output(self.run(self.server.connection.auth.delete_apikey, name), minimal=minimal, out=out)
+        output(self.run(self.connection.auth.delete_apikey, name), minimal=minimal, out=out)
 
     def keygen(self, name, priv, out=None, minimal=None):
-        self.run(self.server.extend_priv)
-        output(self.run(self.server.connection.auth.generate_apikey, name=name, priv=priv), minimal=minimal, out=out)
+        self.run(self.extend_priv)
+        output(self.run(self.connection.auth.generate_apikey, name=name, priv=priv), minimal=minimal, out=out)
 
     def alert_label(self, alert_id, labels, out=None, minimal=None):
-        output(self.run(self.server.connection.alert.label, alert_id, labels), minimal=minimal, out=out)
+        output(self.run(self.connection.alert.label, alert_id, labels), minimal=minimal, out=out)
 
     def bundle(self, sid):
-        data = self.run(self.server.connection.bundle.create, sid)
+        data = self.run(self.connection.bundle.create, sid)
 
         filename = sid + ".bundle"
         counter = 1
@@ -135,10 +155,10 @@ class Main:
             logging.error("'{}' bundle not found".format(filename))
             return
 
-        self.run(self.server.connection.bundle.import_bundle, filename, min_classification=min_classification)
+        self.run(self.connection.bundle.import_bundle, filename, min_classification=min_classification)
 
     def file_download(self, sha256, sid=None, encoding=None):
-        data = self.run(self.server.connection.file.download, sha256=sha256, sid=sid, encoding=encoding)
+        data = self.run(self.connection.file.download, sha256=sha256, sid=sid, encoding=encoding)
         if data and sha256:
             if not os.path.isdir(al_var.DOWNLOADS):
                 os.mkdir(al_var.DOWNLOADS)
@@ -146,29 +166,29 @@ class Main:
                 file.write(data)
 
     def file_children(self, sha256, minimal=None, out=None):
-        data = self.run(self.server.connection.file.children, sha256=sha256)
+        data = self.run(self.connection.file.children, sha256=sha256)
         if not data:
             logging.warning("No children found")
             return
         output(data, minimal=minimal, out=out)
 
     def file_info(self, sha256, minimal=None, out=None):
-        output(self.run(self.server.connection.file.info, sha256=sha256), minimal=minimal, out=out)
+        output(self.run(self.connection.file.info, sha256=sha256), minimal=minimal, out=out)
 
     def file_result(self, sha256, service=None, minimal=None, out=None):
-        output(self.run(self.server.connection.file.result, sha256=sha256, service=service), minimal=minimal, out=out)
+        output(self.run(self.connection.file.result, sha256=sha256, service=service), minimal=minimal, out=out)
 
     def file_ascii(self, sha256, minimal=None, out=None):
-        output(self.run(self.server.connection.file.ascii, sha256=sha256), minimal=minimal, out=out)
+        output(self.run(self.connection.file.ascii, sha256=sha256), minimal=minimal, out=out)
 
     def file_hex(self, sha256, minimal=None, out=None):
-        output(self.run(self.server.connection.file.hex, sha256=sha256), minimal=minimal, out=out)
+        output(self.run(self.connection.file.hex, sha256=sha256), minimal=minimal, out=out)
 
     def file_score(self, sha256, minimal=None, out=None):
-        output(self.run(self.server.connection.file.score, sha256=sha256), minimal=minimal, out=out)
+        output(self.run(self.connection.file.score, sha256=sha256), minimal=minimal, out=out)
 
     def file_strings(self, sha256, minimal=None, out=None):
-        output(self.run(self.server.connection.file.strings, sha256=sha256), minimal=minimal, out=out)
+        output(self.run(self.connection.file.strings, sha256=sha256), minimal=minimal, out=out)
 
     def submit(self, file=None, url=None, sha256=None, minimal=None, out=None):
         if file:
@@ -186,7 +206,7 @@ class Main:
         elif url:  # removing the needing slash, users sometimes copy urls with an extra slash
             url = url[:-1] if str(url).endswith('/') else url
 
-        data = self.run(self.server.connection.submit, file, url=url, sha256=sha256)
+        data = self.run(self.connection.submit, file, url=url, sha256=sha256)
 
         if isinstance(data, dict):
             # Caching sid and getting results
@@ -198,7 +218,7 @@ class Main:
         sid_list = []
         for file in self.service.iso.get_paths():
             if os.path.getsize(file) < al_var.MAX_FILE_SIZE:
-                data = self.run(self.server.connection.submit, file)
+                data = self.run(self.connection.submit, file)
                 if data:
                     print(os.path.basename(file) + " SID: " + data['sid'])
                     sid_list.append(data['sid'])
@@ -225,42 +245,39 @@ class Main:
         self.resubmit(self.cache['sid'], minimal=minimal, out=out)
 
     def dynamic_resubmit(self, sha256, sid=None, name=None, minimal=None, out=None):
-        data = self.run(self.server.connection.submit.dynamic, sha256=sha256, copy_sid=sid, name=name)
+        data = self.run(self.connection.submit.dynamic, sha256=sha256, copy_sid=sid, name=name)
         if isinstance(data, dict):
             self.get_results(data['sid'], minimal=minimal, out=out)
 
     def signature_stats(self, submission_id, minimal=None, out=None):
-        output(self.run(self.server.connection.signature.stats), minimal=minimal, out=out)
+        output(self.run(self.connection.signature.stats), minimal=minimal, out=out)
 
     def submission(self, submission_id, minimal=None, out=None):
-        output(self.run(self.server.connection.submission, submission_id), minimal=minimal, out=out)
+        output(self.run(self.connection.submission, submission_id), minimal=minimal, out=out)
 
     def submission_delete(self, sid, minimal=None, out=None):
-        output(self.run(self.server.connection.submission.delete, sid), minimal=minimal, out=out)
+        output(self.run(self.connection.submission.delete, sid), minimal=minimal, out=out)
 
     def submission_full(self, sid, minimal=None, out=None):
-        output(self.run(self.server.connection.submission.full, sid), minimal=minimal, out=out)
+        output(self.run(self.connection.submission.full, sid), minimal=minimal, out=out)
 
     def submission_summary(self, sid, minimal=None, out=None):
-        output(self.run(self.server.connection.submission.summary, sid), minimal=minimal, out=out)
+        output(self.run(self.connection.submission.summary, sid), minimal=minimal, out=out)
 
     def submission_tree(self, sid, minimal=None, out=None):
-        output(self.run(self.server.connection.submission.tree, sid), minimal=minimal, out=out)
-
-    def get_documentation(self, section=None, key=None):
-        self.server.help(section=section, key=key)
+        output(self.run(self.connection.submission.tree, sid), minimal=minimal, out=out)
 
     def get_results(self, sid, minimal=None, out=None):
         print("Waiting for the results, press ctrl+c to cancel")
         try:
-            while self.server.connection.submission.is_completed(sid) is False:
+            while self.connection.submission.is_completed(sid) is False:
                 time.sleep(0.5)
         except KeyboardInterrupt:
             logging.warning("\nCanceled loading of results for submission '" + sid + "'")
             return
 
         # Get results for the submission
-        output(self.run(self.server.connection.submission, sid), minimal=minimal, out=out)
+        output(self.run(self.connection.submission, sid), minimal=minimal, out=out)
 
     # try catch wrapper for calling server functions
     def run(self, func, *args, **kwargs):
