@@ -8,18 +8,16 @@ Last Updated:   07/20/2020
 import logging
 
 import atexit
-from assemblyline_client.extension import help_functions, file_handler, command_validations, al_var
-from sys import argv
+from assemblyline_client.extension import file_handler, al_var
 import argparse
 from assemblyline_client.extension.al_cli_core import Main
-import re
+
 
 print()
 
 # Reading arguments from command line
 parser = argparse.ArgumentParser(description="Assemblyline client commands")
 # General flag
-parser.add_argument('--menu', action="store_true", help="Open menu")
 parser.add_argument('--service', type=str, help="List")
 parser.add_argument('--dev', action="store_true", help="enable dev mode")
 parser.add_argument('--debug', action="store_true", help="enable debug mode")
@@ -157,61 +155,6 @@ if args.submission_summary:
     clientCore.submission_full(args.submission_summary, minimal=args.minimal, out=args.out)
 if args.submission_tree:
     clientCore.submission_full(args.submission_tree, minimal=args.minimal, out=args.out)
-
-# If there is more than 1 command line argument or the user sets the -m flag, continue to CLI menu
-if len(argv) <= 1 or args.menu:
-    # Assemblyline title in ASCII art
-    print("    ___                             __    __      ___          ")
-    print("   /   |  _____________  ____ ___  / /_  / /_  __/ (_)___  ___ ")
-    print("  / /| | / ___/ ___/ _ \/ __ `__ \/ __ \/ / / / / / / __ \/ _ \\")
-    print(" / ___ |(__  |__  )  __/ / / / / / /_/ / / /_/ / / / / / /  __/")
-    print("/_/  |_/____/____/\___/_/ /_/ /_/_.___/_/\__, /_/_/_/ /_/\___/ ")
-    print("                                        /____/                 \n")
-    print("To see a list of commands, type 'help'")
-    minimal = None
-    if minimal:
-        print("Yes")
-
-    # This function runs the start of the cli and is the main program loop
-    def main_function():
-
-        # Submit regex
-        command_reg = re.compile(
-            '^(alert|auth|bundle|documentation|error|file|hash_search|heuristics|ingest|live|result|search|service'
-            '|signature|submission|submit|sysconfig|user|webauthn|workflow){1}$')
-
-        # Boolean to control program loop. Will run until program is False
-        program = True
-
-        # This loop is responsible for the running the program logic
-        while program:
-            command = ""
-            # Get the users command
-            while command == "":
-                command = input("(al_cli_old) $ ")
-            split_comm = command.split()
-            if split_comm[0] == "help":
-                # If the user types help for a specific command
-                if len(split_comm) == 2:
-                    # If the command matches one of the keys in the dictionary, call that keys function
-                    if split_comm[1] in help_functions.help_commands_list.keys():
-                        help_functions.help_commands_list[split_comm[1]]()
-                    else:
-                        print("Invalid command")
-                else:
-                    # Print the list of commands that have a help menu available
-                    help_functions.help_commands()
-            elif command_reg.match(split_comm[0]):
-                if split_comm[0] in command_validations.commands_list.keys():
-                    if command_validations.commands_list[split_comm[0]](command) == -1:
-                        print("Invalid command")
-            elif split_comm[0] == "quit" or split_comm[0] == "exit":
-                program = False
-            else:
-                print("Invalid command")
-
-
-    main_function()
 
 if __name__ == '__main__':
     atexit.register(clientCore.__exit__)
