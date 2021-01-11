@@ -1,3 +1,25 @@
+# Assemblyline Client Library Extension
+
+The assemblyline CLI extension adds addition functionality to the tool.
+
+You can access the help menu detailing the supported by running the following command
+
+    python3 al_cli.py -h
+   
+## examples
+    NOTE: most commands take a sha256 of a submitted file(located on AL), file submission ID(located on AL), or path to file on the host system
+    
+    SUBMIT FILE:
+    python3 al_cli.py -f <file>
+    
+    VIEW SUBMISSION:
+    python3 al_cli.py -s <submission ID>
+    
+    VIEW FILE INFO: 
+    python3 al_cli.py -fi <file sha256>
+   
+    
+
 # Assemblyline Client Library
 
 The assemblyline client library facilitates issuing requests to assemblyline.
@@ -110,116 +132,3 @@ You can listen on the different message queues and execute a callback on each me
 
 **NOTE**: Depending on the volume of data, you might process a ton of messages!
 
-----------------------------------------------------------------------------------------------
-
-# Bibliothèque cliente d’Assemblyline
-
-La bibliothèque cliente d’Assemblyline facilite la soumission de demandes à Assemblyline.
-
-## Exigences préalables
-
-Avant de procéder à l’installation du client, vous devez vous assurer d’installer ce qui suit :
-
-    # APT/YUM
-    libffi-dev
-    libssl-dev
-
-    # pypi
-    pycryptodome
-    requests
-    requests[security]
-    python-baseconv
-    python-socketio[client]
-    socketio-client==0.5.7.4
-
-## Utilisation du client
-
-Vous pouvez instancier le client au moyen de l’extrait de code suivant :
-
-    # Le nouveau client v4 détecte si le serveur est a la version 3 ou 4. Vous devez maintenant utilisé la fonction get_client.
-    from assemblyline_client import get_client
-    al_client = get_client("https://localhost:443", auth=('user', 'password'))
-
-    # ou d’une clé API :
-
-    al_client = get_client("https://localhost:443", apikey=('user', 'key'))
-
-    # ou d’un certificat :
-
-    al_client = get_client("https://localhost:443", cert='/path/to/cert/file.pem')
-
-    # et si votre server assemblyline a un certificat auto-signé
-
-    al_client = get_client("https://localhost:443", auth=('user', 'password'), verify=False)
-    al_client = get_client("https://localhost:443", auth=('user', 'password'), verify='/path/to/server.crt')
-
-Le client d’Assemblyline est pleinement documenté dans les docstrings. Si vous utilisez un client interactif comme ipython, vous serez en mesure d’utiliser la fonction d’aide.
-
-    al_client.search.alert?
-    Signature: al_client.search.alert(query, *args, **kwargs)
-    Docstring:
-    Search alerts with a Lucene query.
-
-    Required:
-    query   : Lucene query. (string)
-
-    Search parameters can be passed as key/value tuples or keyword parameters.
-
-    Returns all results.
-    File:      /usr/local/lib/python2.7/dist-packages/assemblyline_client/__init__.py
-    Type:      instancemethod
-
-### Exemples
-
-#### Soumission d’un fichier
-
-Pour soumettre un fichier au système, il suffit d’envoyer le chemin d’accès du fichier.
-
-    al_client.submit('/chemin/acces/de/mon/fichier.txt')
-
-#### Obtention d’une clé
-
-Pour obtenir une clé pour un compartiment donné, il suffit d’envoyer son ID.
-
-    submission_details = al_client.submission("4nxrpBePQDLH427aA8m3TZ")
-
-#### Utilisation de la recherche
-
-Pour utiliser le moteur de recherche du client, il suffit de transmettre une demande Lucene.
-
-    search_res = al_client.search.submission("submission.submitter:user")
-
-#### Utilisation de l’itérateur de recherche
-
-Plutôt que d’utiliser une recherche directe et d’obtenir une page de résultats, vous pouvez utiliser l’itérateur de recherche pour passer à travers tous les résultats.
-
-    for submission in al_client.search.stream.submission("submission.submitter:user"):
-        # Seuls les champs indexés sont renvoyés. Pour obtenir les résultats dans leur intégralité, vous devez y accéder manuellement,
-        full_submission = al_client.submission(submission['submission.sid'])
-
-        # puis faire quelque chose avec la soumission complète (imprimer, par exemple)
-        print(full_submission)
-
-#### Utilisation des paramètres de recherche
-
-##### Version 3
-Vous pouvez transmettre des paramètres de recherche pour une requête donnée. Les exemples suivants démontrent une recherche de facettes Lucene pour obtenir les utilisateurs les plus fréquants soumettant à un server.
-
-    kwargs = {'facet':'on', 'facet.field':'submission.submitter', 'facet.sort':'count', 'facet.limit':50, 'rows':0}  # rows=0 pour que seuls les résultats de la facette soient retourné
-    c.search.submission('times.submitted:[NOW-7DAYS TO NOW]', **kwargs)
-
-##### Version 4
-Le serveur version 4 supporte directement les recherches de facettes, vous navez donc pas besoin den apprendre la syntaxe.
-    
-    c.search.facet.submission('submission.submitter', query='times.submitted:[NOW-7DAYS TO NOW]')
-    
-#### L’écoute du message plutôt que la recherche de données
-
-Vous pouvez écouter les différentes files d’attente de messages et effectuer un rappel pour chaque message.
-
-    def callback(callback_data):
-        print callback_data
-
-    al_client.socketio.listen_on_dashboard_messages(callback)
-
-**REMARQUE** : Selon le volume de données, vous pourriez traiter une grande quantité de messages!
